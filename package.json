@@ -1,0 +1,30 @@
+{
+  "name": "vidtube",
+  "version": "1.0.0",
+  "description": "VideoStreaming App. API",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "nodejs",
+    "mongoose",
+    "express",
+    "backend"
+  ],
+  "author": "Soumadip Banerjee",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.12.2"
+  }
+}
