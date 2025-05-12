@@ -50,13 +50,9 @@ const userSchema = new mongoose.Schema(
 );
 
 //Defines a pre hook for the model.
-userSchema.pre("save", async function (req, res, next) {
-  // if (this.modified("password")) {
-  //   this.password = bcrypt.hash(this.password, 10);
-  // }
-  //! or, smarter move 💡-
-  if (!this.modified("password")) return next();
-  this.password = bcrypt.hash(this.password, 10);
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 

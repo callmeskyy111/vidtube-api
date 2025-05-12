@@ -1,15 +1,36 @@
+// src/middleware/multer.middleware.js
 import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Create temp directory if it doesn't exist
+const uploadPath = path.join(process.cwd(), "public", "temp");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "./public/temp");
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    //TODO: Study
-    // const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    // cb(null, file.fieldname + "-" + uniqueSuffix);
-    cb(null, file.originalname);
+    cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
 
-export const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  // Optional: restrict to image types
+  if (file.mimetype.startsWith("image/")) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed!"), false);
+  }
+};
+
+export const upload = multer({ storage, fileFilter });
+
+// Accept both avatar and coverImage as file fields
+export const userFileUpload = upload.fields([
+  { name: "avatar", maxCount: 1 },
+  { name: "coverImage", maxCount: 1 },
+]);
