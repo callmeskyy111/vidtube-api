@@ -7,6 +7,29 @@ import {
   deleteFromCloudinary,
 } from "../utils/cloudinary.js";
 
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    //todo: Validation, for user.
+    if (!user) {
+      throw new ApiError(404, "Invalid User! 🔴");
+    }
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.log("🔴 ERROR: ", error);
+    throw new ApiError(
+      500,
+      "🔴 Something went wrong while generating access/refresh token!"
+    );
+  }
+};
+
+// register-controller
 const registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, username, password } = req.body;
 
@@ -89,4 +112,65 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser };
+//login-controller
+const loginUser = asyncHandler(async (req, res) => {
+  // get data from the body
+  const { email, username, password } = req.password;
+
+  //validation - flexible
+  if (!email || !username || !password) {
+    throw new ApiError(400, "All fields are required! 🔴");
+  }
+
+  // Check if user already exists
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found! 🔴");
+  }
+
+  // Validate password
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid Credentials! 🔴");
+  }
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  //extra query, but safer
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+  //Another check
+  if (!loggedInUser) {
+    throw new ApiError(404, "User is not logged-in! 🔴");
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  };
+  //Send logged-in user details
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      //this is better for mobile-apps, no-cookies can be set there (talk to the front-end team)
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged-in successfully ✅"
+      )
+    );
+});
+
+export { registerUser, loginUser };

@@ -5,5 +5,6 @@ import { userFileUpload } from "../middlewares/multer.middleware.js";
 const userRouter = Router();
 
 userRouter.post("/register", userFileUpload, registerUser);
+userRouter.post("/login",);
 
 export default userRouter;
