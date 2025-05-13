@@ -6,6 +6,7 @@ import {
   uploadToCloudinary,
   deleteFromCloudinary,
 } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -29,7 +30,7 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
-// register-controller
+//! register-controller
 const registerUser = asyncHandler(async (req, res) => {
   const { fullname, email, username, password } = req.body;
 
@@ -112,7 +113,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-//login-controller
+//! login-controller
 const loginUser = asyncHandler(async (req, res) => {
   // get data from the body
   const { email, username, password } = req.password;
@@ -173,4 +174,56 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser, loginUser };
+//! logout-controller
+const logoutUser = asyncHandler(async (req, res) => {
+  // refresh-token needs to be removed in the logout-controller
+  await User.findByIdAndUpdate(req.user._id);
+  //TODO: need to come-back after the middleware section. 💡
+});
+
+//! new refresh-token
+const refreshAccessTokens = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "Refresh-token is required 🔴");
+  }
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh-token!🔴");
+    }
+    if (incomingRefreshToken !== user.refreshToken) {
+      throw new ApiError(401, "Invalid refresh-token!🔴");
+    }
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    };
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .json("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access-Token refreshed successfully! ✅"
+        )
+      );
+  } catch (error) {
+    console.log("ERROR: ", error);
+    throw new ApiError(
+      500,
+      "Something went wrong while refreshing access-tokens! 🔴"
+    );
+  }
+});
+
+export { registerUser, loginUser, refreshAccessTokens };
